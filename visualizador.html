@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor 3D Avanzado (Cuerpos Físicos)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1e1e1e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            max-width: 380px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            max-height: 95vh;
+        }
+
+        #top-right-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            width: 240px;
+            border: 1px solid #333;
+            font-size: 13px;
+        }
+
+        #top-right-panel h3 {
+            font-size: 14px;
+            margin: 0 0 12px 0;
+            color: #4CAF50;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-group label {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .control-group input {
+            width: 80px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 3px 5px;
+            text-align: right;
+            font-size: 12px;
+        }
+
+        .preset-container {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            border-top: 1px dashed #555;
+            padding-top: 10px;
+        }
+
+        .btn-preset {
+            flex: 1;
+            cursor: pointer;
+            background: #2196F3;
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            border: none;
+            font-size: 12px;
+            text-align: center;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-preset:hover {
+            background: #0b7dda;
+        }
+
+        .btn-preset.lento {
+            background: #e7e7e7;
+            color: black;
+        }
+
+        .btn-preset.lento:hover {
+            background: #ddd;
+        }
+
+        #info-panel,
+        #nearby-panel,
+        #route-panel {
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+
+        .btn-primary {
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            font-size: 14px;
+            transition: 0.2s;
+            border: none;
+            text-align: center;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+        }
+
+        .btn-danger {
+            cursor: pointer;
+            background: #f44336;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .btn-excel {
+            cursor: pointer;
+            background: #207245;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+
+        .btn-excel:hover {
+            background: #175432;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .data-row {
+            margin-bottom: 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .data-content {
+            flex-grow: 1;
+            padding-right: 10px;
+        }
+
+        .data-label {
+            font-weight: bold;
+            color: #03A9F4;
+        }
+
+        .copy-btn {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 12px;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background: #555;
+        }
+
+        .copy-btn:active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .axis-info {
+            font-size: 11px;
+            margin-top: 10px;
+            color: #888;
+        }
+
+        .axis-info span.r {
+            color: #ff5555;
+            font-weight: bold;
+        }
+
+        .axis-info span.g {
+            color: #55ff55;
+            font-weight: bold;
+        }
+
+        .axis-info span.b {
+            color: #5555ff;
+            font-weight: bold;
+        }
+
+        .legend {
+            font-size: 11px;
+            margin-top: 10px;
+            color: #ccc;
+            border-top: 1px dashed #555;
+            padding-top: 5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .color-box {
+            width: 12px;
+            height: 12px;
+            margin-right: 6px;
+            display: inline-block;
+            border-radius: 2px;
+        }
+
+        .search-controls {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .search-controls input[type="number"] {
+            width: 40px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 2px 5px;
+            text-align: center;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        #info-panel {
+            display: none;
+            margin-top: 15px;
+            border-top: 1px solid #555;
+            padding-top: 15px;
+        }
+
+        #nearby-panel {
+            display: none;
+            margin-top: 15px;
+            border-top: 1px solid #555;
+            padding-top: 10px;
+        }
+
+        #nearby-panel h3 {
+            font-size: 14px;
+            margin: 0 0 8px 0;
+            color: #4CAF50;
+        }
+
+        #route-panel {
+            display: none;
+            margin-top: 15px;
+            border-top: 1px solid #555;
+            padding-top: 10px;
+            flex-grow: 1;
+            overflow-y: auto;
+            min-height: 100px;
+        }
+
+        .route-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .route-header h3 {
+            font-size: 14px;
+            margin: 0;
+            color: #00BCD4;
+        }
+
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: left;
+        }
+
+        .custom-table th {
+            background: #333;
+            padding: 4px;
+            color: #aaa;
+            position: sticky;
+            top: 0;
+        }
+
+        .custom-table td {
+            padding: 4px;
+            border-bottom: 1px solid #444;
+            vertical-align: middle;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #loading {
+            display: none;
+            color: #FFC107;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+            z-index: 100;
+            transition: opacity 0.3s;
+        }
+
+        #context-menu {
+            display: none;
+            position: absolute;
+            z-index: 1000;
+            background: rgba(40, 40, 40, 0.95);
+            border: 1px solid #555;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            padding: 5px 0;
+            min-width: 150px;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #fff;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: #4CAF50;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+
+    <div id="ui-container">
+        <h1>Visor 3D Interactivo</h1>
+        <label for="file-upload" class="btn-primary">Cargar Excel de Plant3D</label>
+        <input type="file" id="file-upload" accept=".xlsx, .xls">
+        <div id="loading">Construyendo Cuerpos 3D...</div>
+
+        <div class="search-controls">
+            <label class="checkbox-container">
+                <input type="checkbox" id="modo-ruta"> Modo Ruta
+            </label>
+            <div>
+                Cercanos: <input type="number" id="max-cercanos" value="3" min="1" max="20">
+            </div>
+            <button class="btn-danger" onclick="reiniciarRuta()">Limpiar Ruta</button>
+        </div>
+
+        <div class="axis-info">
+            Ejes: <span class="r">X (Rojo)</span> | <span class="g">Y (Verde)</span> | <span class="b">Z
+                (Elevación)</span><br>
+            <span style="color: #03A9F4; font-weight: bold;">WASD (Plano XY) | Espacio (Subir) | Shift (Bajar)</span>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><span class="color-box" style="background:#90A4AE;"></span> Tuberías y Flanges
+            </div>
+            <div class="legend-item"><span class="color-box" style="background:#FF9800;"></span> Válvulas y Accesorios
+            </div>
+            <div class="legend-item"><span class="color-box" style="background:#F44336;"></span> Status: Existing</div>
+            <div class="legend-item"><span class="color-box" style="background:#00BCD4;"></span> En Ruta (Historial)
+            </div>
+            <div class="legend-item"><span class="color-box" style="background:#FFEB3B;"></span> Objeto Actual</div>
+            <div class="legend-item"><span class="color-box" style="background:#4CAF50;"></span> Próximos (Caras
+                Cercanas)</div>
+        </div>
+
+        <div id="info-panel">
+            <h2 style="font-size: 16px; margin: 0 0 10px 0; color: #03A9F4;">Detalles del Componente</h2>
+            <div class="data-row">
+                <div class="data-content"><span class="data-label">PnPID:</span> <span id="info-pnpid"></span></div>
+                <button class="copy-btn" onclick="copiarTexto('info-pnpid')">Copiar</button>
+            </div>
+            <div class="data-row">
+                <div class="data-content"><span class="data-label">Tipo:</span> <span id="info-type"></span></div>
+                <button class="copy-btn" onclick="copiarTexto('info-type')">Copiar</button>
+            </div>
+            <div class="data-row">
+                <div class="data-content"><span class="data-label">Size:</span> <span id="info-size"></span></div>
+                <button class="copy-btn" onclick="copiarTexto('info-size')">Copiar</button>
+            </div>
+            <div class="data-row">
+                <div class="data-content"><span class="data-label">Cut Length:</span> <span id="info-length"></span>
+                </div><button class="copy-btn" onclick="copiarTexto('info-length')">Copiar</button>
+            </div>
+            <div class="data-row">
+                <div class="data-content"><span class="data-label">Status:</span> <span id="info-status"></span></div>
+                <button class="copy-btn" onclick="copiarTexto('info-status')">Copiar</button>
+            </div>
+            <div class="data-row">
+                <div class="data-content"><span class="data-label">Desc:</span> <span id="info-desc"></span></div>
+                <button class="copy-btn" onclick="copiarTexto('info-desc')">Copiar</button>
+            </div>
+        </div>
+
+        <div id="nearby-panel">
+            <h3>Seleccionar Cercanos</h3>
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>PnPID</th>
+                        <th>Tipo</th>
+                        <th>Esp. Libre</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="nearby-table-body"></tbody>
+            </table>
+        </div>
+
+        <div id="route-panel">
+            <div class="route-header">
+                <h3>Historial de Ruta</h3>
+                <button class="btn-excel" onclick="descargarExcelRuta()">⬇ Excel</button>
+            </div>
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>PnPID</th>
+                        <th>Tipo</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="route-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="top-right-panel">
+        <h3>Ajustes de Velocidad</h3>
+        <div class="control-group">
+            <label for="input-speed-xy">Velocidad XY:</label>
+            <input type="number" id="input-speed-xy" value="50000" min="0">
+        </div>
+        <div class="control-group">
+            <label for="input-speed-z">Velocidad Altura (Z):</label>
+            <input type="number" id="input-speed-z" value="50000" min="0">
+        </div>
+        <div class="preset-container">
+            <button class="btn-preset" onclick="cambiarVelocidadPreset(50000)">Rápido</button>
+            <button class="btn-preset lento" onclick="cambiarVelocidadPreset(5000)">Lento</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div id="toast">¡Copiado al portapapeles!</div>
+
+    <div id="context-menu">
+        <div class="context-menu-item" id="btn-convert-point">Transformar a Punto (CG)</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let objectsGroup;
+
+        let intersectedObject = null;
+        let objetosCercanosActuales = [];
+        let historialVisitados = new Set();
+        let rutaArray = [];
+        let modoRutaActivo = false;
+
+        const moveState = { forward: false, backward: false, left: false, right: false, up: false, down: false };
+        const clock = new THREE.Clock();
+        let moveSpeed = 50000.0;
+        let moveSpeedZ = 50000.0;
+
+        const originalColors = new Map();
+        const COLOR_RUTA = 0x00BCD4;
+        const COLOR_SELECCION = 0xFFEB3B;
+        const COLOR_CERCANO = 0x4CAF50;
+
+        const hojasObjetivo = ['Pipe', 'Valve', 'Tee', 'Lateral', 'Reducer', 'Flange', 'Pipe Bend', 'Elbow', 'Cross', 'Coupling', 'Blind Flange', 'Single Branch Fitting'];
+
+        window.copiarTexto = function (elementId) {
+            const texto = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(texto).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => { toast.style.display = 'none'; }, 2000);
+            });
+        };
+
+        window.cambiarVelocidadPreset = function (valor) {
+            moveSpeed = valor;
+            moveSpeedZ = valor;
+            document.getElementById('input-speed-xy').value = valor;
+            document.getElementById('input-speed-z').value = valor;
+        };
+
+        window.descargarExcelRuta = function () {
+            if (rutaArray.length === 0) {
+                alert("La ruta está vacía. Selecciona objetos primero.");
+                return;
+            }
+
+            const datosParaExcel = rutaArray.map(item => {
+                let cantidad = 1;
+                let unidad = '[un]';
+
+                if (item.type === 'Pipe') {
+                    let num = parseFloat(String(item.length).replace(',', '.'));
+                    if (!isNaN(num)) {
+                        cantidad = num / 1000;
+                    }
+                    unidad = '[m]';
+                }
+
+                return {
+                    "Descripción": item.desc,
+                    "Diámetro": item.size,
+                    "Cantidad": cantidad,
+                    "Unidad": unidad
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(datosParaExcel);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Ruta Extraida");
+            XLSX.writeFile(workbook, "Ruta_Plant3D.xlsx");
+        };
+
+        function isSizeCompatible(sizeA, sizeB) {
+            if (!sizeA || !sizeB || sizeA === "-" || sizeB === "-") return true;
+            const parseSizes = (s) => String(s).toLowerCase().split('x').map(x => x.trim().replace(/"/g, ''));
+            const sizesA = parseSizes(sizeA);
+            const sizesB = parseSizes(sizeB);
+            return sizesA.some(sa => sizesB.includes(sa));
+        }
+
+        function calcularAnguloEntreTubos(mesh1, mesh2) {
+            if (!mesh1 || !mesh2 || !mesh1.userData.geomData || !mesh2.userData.geomData) return 0;
+
+            const g1 = mesh1.userData.geomData;
+            const g2 = mesh2.userData.geomData;
+
+            const v1 = new THREE.Vector3().subVectors(g1.pEnd, g1.pStart);
+            const v2 = new THREE.Vector3().subVectors(g2.pEnd, g2.pStart);
+
+            const mag1 = v1.length();
+            const mag2 = v2.length();
+
+            if (mag1 === 0 || mag2 === 0) return 0;
+
+            const dotProduct = v1.dot(v2);
+            let cosTheta = dotProduct / (mag1 * mag2);
+            cosTheta = Math.max(-1.0, Math.min(1.0, cosTheta));
+
+            const anguloDeg = Math.acos(cosTheta) * (180 / Math.PI);
+            const anguloSuplementario = 180 - anguloDeg;
+
+            return Math.min(anguloDeg, anguloSuplementario);
+        }
+
+        function distanciaEntreCuerpos(g1, g2) {
+            const EPS = 1e-6;
+            const p1 = g1.pStart;
+            const p2 = g1.pEnd;
+            const p3 = g2.pStart;
+            const p4 = g2.pEnd;
+
+            const d1 = new THREE.Vector3().subVectors(p2, p1);
+            const d2 = new THREE.Vector3().subVectors(p4, p3);
+            const r = new THREE.Vector3().subVectors(p1, p3);
+
+            const a = d1.lengthSq();
+            const e = d2.lengthSq();
+            const f = d2.dot(r);
+
+            let s = 0, t = 0;
+
+            if (a <= EPS && e <= EPS) {
+                s = t = 0;
+            } else if (a <= EPS) {
+                s = 0;
+                t = THREE.MathUtils.clamp(f / e, 0, 1);
+            } else {
+                const c = d1.dot(r);
+                if (e <= EPS) {
+                    t = 0;
+                    s = THREE.MathUtils.clamp(-c / a, 0, 1);
+                } else {
+                    const b = d1.dot(d2);
+                    const denom = a * e - b * b;
+
+                    if (denom !== 0) {
+                        s = THREE.MathUtils.clamp((b * f - c * e) / denom, 0, 1);
+                    } else {
+                        s = 0;
+                    }
+
+                    const tNom = b * s + f;
+                    if (tNom < 0) {
+                        t = 0;
+                        s = THREE.MathUtils.clamp(-c / a, 0, 1);
+                    } else if (tNom > e) {
+                        t = 1;
+                        s = THREE.MathUtils.clamp((b - c) / a, 0, 1);
+                    } else {
+                        t = tNom / e;
+                    }
+                }
+            }
+
+            const c1 = new THREE.Vector3().copy(p1).add(d1.multiplyScalar(s));
+            const c2 = new THREE.Vector3().copy(p3).add(d2.multiplyScalar(t));
+
+            const distCentros = c1.distanceTo(c2);
+            let distSuperficie = distCentros - g1.radius - g2.radius;
+
+            return Math.max(0, distSuperficie);
+        }
+
+        function limpiarCercanos() {
+            objetosCercanosActuales.forEach(obj => {
+                if (intersectedObject && obj.uuid === intersectedObject.uuid) return;
+
+                if (historialVisitados.has(obj.uuid)) {
+                    obj.material.color.setHex(COLOR_RUTA);
+                } else {
+                    obj.material.color.setHex(originalColors.get(obj.uuid));
+                }
+            });
+            objetosCercanosActuales = [];
+            document.getElementById('nearby-panel').style.display = 'none';
+        }
+
+        function actualizarCercanos() {
+            limpiarCercanos();
+            const panelCercanos = document.getElementById('nearby-panel');
+            const tbodyCercanos = document.getElementById('nearby-table-body');
+            tbodyCercanos.innerHTML = '';
+
+            if (!modoRutaActivo || !intersectedObject) return;
+
+            const maxCercanos = parseInt(document.getElementById('max-cercanos').value) || 3;
+            let distancias = [];
+            const geom1 = intersectedObject.userData.geomData;
+            const size1 = intersectedObject.userData.size;
+
+            objectsGroup.children.forEach(mesh => {
+                if (mesh.uuid === intersectedObject.uuid) return;
+                if (historialVisitados.has(mesh.uuid)) return;
+
+                const size2 = mesh.userData.size;
+                if (!isSizeCompatible(size1, size2)) return;
+
+                const geom2 = mesh.userData.geomData;
+                const distSuperficie = distanciaEntreCuerpos(geom1, geom2);
+
+                distancias.push({ mesh: mesh, distancia: distSuperficie });
+            });
+
+            distancias.sort((a, b) => {
+                const TOLERANCIA_EMPATE = 5.0;
+
+                if (Math.abs(a.distancia - b.distancia) < TOLERANCIA_EMPATE) {
+                    const cgDistA = a.mesh.position.distanceTo(intersectedObject.position);
+                    const cgDistB = b.mesh.position.distanceTo(intersectedObject.position);
+                    return cgDistA - cgDistB;
+                }
+
+                return a.distancia - b.distancia;
+            });
+
+            const itemsCercanos = distancias.slice(0, maxCercanos);
+            objetosCercanosActuales = itemsCercanos.map(item => item.mesh);
+
+            if (itemsCercanos.length > 0) {
+                panelCercanos.style.display = 'block';
+                itemsCercanos.forEach(item => {
+                    item.mesh.material.color.setHex(COLOR_CERCANO);
+
+                    const tr = document.createElement('tr');
+                    const distFormat = item.distancia.toFixed(2).replace('.', ',');
+                    tr.innerHTML = `
+                        <td>${item.mesh.userData.pnpid}</td>
+                        <td>${item.mesh.userData.type}</td>
+                        <td>${distFormat}</td>
+                        <td><button class="btn-primary" style="padding: 2px 6px; font-size: 11px;" onclick="seleccionarObjetoPorUUID('${item.mesh.uuid}')">Ir</button></td>
+                    `;
+                    tbodyCercanos.appendChild(tr);
+                });
+            }
+        }
+
+        function actualizarTablaRuta() {
+            const tbody = document.getElementById('route-table-body');
+            tbody.innerHTML = '';
+            rutaArray.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${item.pnpid}</td>
+                    <td>${item.type}</td>
+                    <td><button class="btn-danger" style="padding: 2px 6px; font-size: 10px;" onclick="eliminarDeRuta(${index})">X</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            const panel = document.getElementById('route-panel');
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        window.seleccionarObjetoPorUUID = function (uuid) {
+            const mesh = objectsGroup.children.find(m => m.uuid === uuid);
+            if (mesh) procesarSeleccion(mesh, true);
+        };
+
+        function procesarSeleccion(clickeado, agregarARuta = true) {
+            if (intersectedObject && intersectedObject !== clickeado) {
+                if (historialVisitados.has(intersectedObject.uuid)) {
+                    intersectedObject.material.color.setHex(COLOR_RUTA);
+                } else {
+                    intersectedObject.material.color.setHex(originalColors.get(intersectedObject.uuid));
+                }
+            }
+
+            intersectedObject = clickeado;
+            intersectedObject.material.color.setHex(COLOR_SELECCION);
+
+            const data = intersectedObject.userData;
+            document.getElementById('info-pnpid').innerText = data.pnpid;
+            document.getElementById('info-type').innerText = data.type;
+            document.getElementById('info-size').innerText = data.size;
+            document.getElementById('info-length').innerText = data.length;
+            document.getElementById('info-status').innerText = data.status;
+            document.getElementById('info-desc').innerText = data.desc;
+            document.getElementById('info-panel').style.display = 'block';
+
+            if (modoRutaActivo && agregarARuta) {
+                if (!historialVisitados.has(clickeado.uuid)) {
+                    historialVisitados.add(clickeado.uuid);
+                    rutaArray.push({
+                        uuid: clickeado.uuid,
+                        pnpid: data.pnpid,
+                        type: data.type,
+                        size: data.size,
+                        desc: data.desc,
+                        length: data.length
+                    });
+                    actualizarTablaRuta();
+                }
+                actualizarCercanos();
+            } else if (modoRutaActivo && !agregarARuta) {
+                actualizarCercanos();
+            } else {
+                limpiarCercanos();
+            }
+        }
+
+        window.eliminarDeRuta = function (index) {
+            const item = rutaArray[index];
+            if (!item) return;
+
+            historialVisitados.delete(item.uuid);
+            rutaArray.splice(index, 1);
+
+            const meshToRemove = objectsGroup.children.find(m => m.uuid === item.uuid);
+            if (meshToRemove) {
+                meshToRemove.material.color.setHex(originalColors.get(item.uuid));
+            }
+
+            actualizarTablaRuta();
+
+            if (rutaArray.length > 0) {
+                const lastItem = rutaArray[rutaArray.length - 1];
+                const lastMesh = objectsGroup.children.find(m => m.uuid === lastItem.uuid);
+                if (lastMesh) {
+                    procesarSeleccion(lastMesh, false);
+                }
+            } else {
+                if (intersectedObject) {
+                    intersectedObject.material.color.setHex(originalColors.get(intersectedObject.uuid));
+                    intersectedObject = null;
+                }
+                limpiarCercanos();
+                document.getElementById('info-panel').style.display = 'none';
+            }
+        };
+
+        window.reiniciarRuta = function () {
+            historialVisitados.forEach(uuid => {
+                const m = objectsGroup.children.find(m => m.uuid === uuid);
+                if (m) m.material.color.setHex(originalColors.get(uuid));
+            });
+
+            historialVisitados.clear();
+            rutaArray = [];
+            actualizarTablaRuta();
+
+            if (intersectedObject) {
+                intersectedObject.material.color.setHex(originalColors.get(intersectedObject.uuid));
+                intersectedObject = null;
+            }
+            limpiarCercanos();
+            document.getElementById('info-panel').style.display = 'none';
+        };
+
+        init3D();
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 10, 10000000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ZOOM };
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(10000, 10000, 10000);
+            scene.add(dirLight);
+
+            scene.add(new THREE.AxesHelper(500000));
+            const gridHelper = new THREE.GridHelper(1000000, 100, 0x555555, 0x333333);
+            gridHelper.rotation.x = Math.PI / 2;
+            scene.add(gridHelper);
+
+            objectsGroup = new THREE.Group();
+            scene.add(objectsGroup);
+
+            window.objectsGroup = objectsGroup;
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            window.addEventListener('pointerdown', onMouseClick);
+            window.addEventListener('resize', onWindowResize);
+
+            window.addEventListener('keydown', (event) => {
+                if (event.target.tagName === 'INPUT') return;
+
+                switch (event.code) {
+                    case 'KeyW': moveState.forward = true; break;
+                    case 'KeyS': moveState.backward = true; break;
+                    case 'KeyA': moveState.left = true; break;
+                    case 'KeyD': moveState.right = true; break;
+                    case 'Space':
+                        moveState.up = true;
+                        event.preventDefault();
+                        break;
+                    case 'ShiftLeft':
+                    case 'ShiftRight':
+                        moveState.down = true;
+                        break;
+                }
+            });
+
+            window.addEventListener('keyup', (event) => {
+                switch (event.code) {
+                    case 'KeyW': moveState.forward = false; break;
+                    case 'KeyS': moveState.backward = false; break;
+                    case 'KeyA': moveState.left = false; break;
+                    case 'KeyD': moveState.right = false; break;
+                    case 'Space': moveState.up = false; break;
+                    case 'ShiftLeft':
+                    case 'ShiftRight': moveState.down = false; break;
+                }
+            });
+
+            document.getElementById('input-speed-xy').addEventListener('input', (e) => {
+                moveSpeed = parseFloat(e.target.value) || 0;
+            });
+
+            document.getElementById('input-speed-z').addEventListener('input', (e) => {
+                moveSpeedZ = parseFloat(e.target.value) || 0;
+            });
+
+            document.getElementById('modo-ruta').addEventListener('change', (e) => {
+                modoRutaActivo = e.target.checked;
+                document.getElementById('route-panel').style.display = modoRutaActivo ? 'block' : 'none';
+                if (!modoRutaActivo) {
+                    limpiarCercanos();
+                } else if (intersectedObject) {
+                    actualizarCercanos();
+                }
+            });
+
+            document.getElementById('max-cercanos').addEventListener('input', () => {
+                if (modoRutaActivo) actualizarCercanos();
+            });
+
+            animate();
+        }
+
+        document.getElementById('file-upload').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const chkRuta = document.getElementById('modo-ruta');
+            chkRuta.checked = false;
+            modoRutaActivo = false;
+            document.getElementById('route-panel').style.display = 'none';
+
+            document.getElementById('loading').style.display = 'block';
+            window.reiniciarRuta();
+
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    let todosLosDatos = [];
+
+                    workbook.SheetNames.forEach(sheetName => {
+                        if (hojasObjetivo.includes(sheetName)) {
+                            const sheet = workbook.Sheets[sheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(sheet);
+                            jsonData.forEach(row => {
+                                row['_SheetName'] = sheetName;
+                                todosLosDatos.push(row);
+                            });
+                        }
+                    });
+
+                    if (todosLosDatos.length === 0) {
+                        alert("No se encontraron datos.");
+                        return;
+                    }
+                    generarGeometria(todosLosDatos);
+                } catch (error) {
+                    alert("Error procesando el archivo: " + error.message);
+                } finally {
+                    document.getElementById('loading').style.display = 'none';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function formatearDecimal(valor) {
+            if (valor === undefined || valor === null || valor === "") return "-";
+            const num = parseFloat(valor);
+            if (isNaN(num)) return valor;
+            return num.toFixed(2).replace('.', ',');
+        }
+
+        function generarGeometria(datos) {
+            while (objectsGroup.children.length > 0) { objectsGroup.remove(objectsGroup.children[0]); }
+            originalColors.clear();
+
+            let centerOffset = null;
+            const RADIO_ESFERA = 40;
+            const fittingGeometry = new THREE.SphereGeometry(RADIO_ESFERA, 16, 16);
+
+            const fittingsData = [];
+
+            // PASO 1: Renderizar cuerpos estáticos
+            datos.forEach(row => {
+                if (!row['PnPID'] || !row['Center of Gravity X']) return;
+
+                const sheet = row['_SheetName'];
+                // Mandamos piezas de conexión complejas al Paso 2
+                if (['Elbow', 'Pipe Bend', 'Tee', 'Lateral', 'Single Branch Fitting', 'Cross'].includes(sheet)) {
+                    fittingsData.push(row);
+                    return;
+                }
+
+                const cgx = parseFloat(row['Center of Gravity X']) || 0;
+                const cgy = parseFloat(row['Center of Gravity Y']) || 0;
+                const cgz = parseFloat(row['Center of Gravity Z']) || 0;
+
+                if (!centerOffset) {
+                    centerOffset = new THREE.Vector3(cgx, cgy, cgz);
+                    camera.position.set(5000, 5000, 5000);
+                    controls.target.set(0, 0, 0);
+                }
+
+                const cg = new THREE.Vector3(cgx - centerOffset.x, cgy - centerOffset.y, cgz - centerOffset.z);
+                let finalLength = row['Cut Length'];
+
+                let colorBase = 0x90A4AE;
+                if (sheet !== 'Pipe' && !sheet.toLowerCase().includes('flange') && sheet !== 'Coupling') colorBase = 0xFF9800;
+                if (String(row['Status'] || "").trim().toLowerCase() === 'existing') colorBase = 0xF44336;
+
+                const matDinamico = new THREE.MeshLambertMaterial({ color: colorBase });
+                let mesh;
+                let geomInfo = { pStart: cg, pEnd: cg, radius: RADIO_ESFERA };
+
+                if (sheet === 'Pipe') {
+                    if (!row['X Coordinate (Port 1)']) return;
+                    const p1x = parseFloat(row['X Coordinate (Port 1)']) || 0;
+                    const p1y = parseFloat(row['Y Coordinate (Port 1)']) || 0;
+                    const p1z = parseFloat(row['COP Elevation (Port 1)']) || 0;
+                    const p1 = new THREE.Vector3(p1x - centerOffset.x, p1y - centerOffset.y, p1z - centerOffset.z);
+
+                    const p2 = new THREE.Vector3().copy(cg).multiplyScalar(2).sub(p1);
+                    const length = p1.distanceTo(p2);
+                    if (length === 0) return;
+
+                    if (!finalLength) finalLength = length;
+                    const direction = new THREE.Vector3().subVectors(p2, p1).normalize();
+
+                    let radius = 50;
+                    if (row['Size']) {
+                        let parsed = parseFloat(String(row['Size']).replace('"', '').split('x')[0]);
+                        if (!isNaN(parsed)) radius = parsed * 12.7;
+                    }
+
+                    const geometry = new THREE.CylinderGeometry(radius, radius, length, 12);
+                    mesh = new THREE.Mesh(geometry, matDinamico);
+                    mesh.position.copy(cg);
+                    const axis = new THREE.Vector3(0, 1, 0);
+                    mesh.quaternion.setFromUnitVectors(axis, direction);
+
+                    geomInfo = { pStart: p1, pEnd: p2, radius: radius };
+
+                } else if (sheet.toLowerCase().includes('flange')) {
+                    if (!row['X Coordinate (Port 1)']) {
+                        mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                        mesh.position.copy(cg);
+                    } else {
+                        const p1x = parseFloat(row['X Coordinate (Port 1)']) || 0;
+                        const p1y = parseFloat(row['Y Coordinate (Port 1)']) || 0;
+                        const p1z = parseFloat(row['COP Elevation (Port 1)']) || 0;
+                        const p1 = new THREE.Vector3(p1x - centerOffset.x, p1y - centerOffset.y, p1z - centerOffset.z);
+
+                        const distToP1 = p1.distanceTo(cg);
+                        let direction = new THREE.Vector3(0, 1, 0);
+
+                        let thickness = parseFloat(row['Flange Thickness']);
+                        if (isNaN(thickness) || thickness <= 0) thickness = distToP1 * 2;
+                        if (thickness < 10) thickness = 30;
+
+                        if (distToP1 > 0.01) direction.subVectors(cg, p1).normalize();
+
+                        let radius = 60;
+                        if (row['Size']) {
+                            let parsed = parseFloat(String(row['Size']).replace('"', '').split('x')[0]);
+                            if (!isNaN(parsed)) radius = (parsed * 1.5) * 12.7;
+                        }
+
+                        const pStart = new THREE.Vector3().copy(cg).sub(direction.clone().multiplyScalar(thickness / 2));
+                        const pEnd = new THREE.Vector3().copy(cg).add(direction.clone().multiplyScalar(thickness / 2));
+
+                        const geometry = new THREE.CylinderGeometry(radius, radius, thickness, 16);
+                        mesh = new THREE.Mesh(geometry, matDinamico);
+                        mesh.position.copy(cg);
+                        const axis = new THREE.Vector3(0, 1, 0);
+                        mesh.quaternion.setFromUnitVectors(axis, direction);
+
+                        geomInfo = { pStart: pStart, pEnd: pEnd, radius: radius };
+                    }
+                } else if (sheet === 'Coupling') {
+                    if (!row['X Coordinate (Port 1)']) {
+                        mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                        mesh.position.copy(cg);
+                    } else {
+                        const p1x = parseFloat(row['X Coordinate (Port 1)']) || 0;
+                        const p1y = parseFloat(row['Y Coordinate (Port 1)']) || 0;
+                        const p1z = parseFloat(row['COP Elevation (Port 1)']) || 0;
+                        const p1 = new THREE.Vector3(p1x - centerOffset.x, p1y - centerOffset.y, p1z - centerOffset.z);
+
+                        const distToP1 = p1.distanceTo(cg);
+                        let direction = new THREE.Vector3(0, 1, 0);
+
+                        let thickness = parseFloat(row['Length']);
+                        if (isNaN(thickness) || thickness <= 0) thickness = distToP1 * 2;
+                        if (thickness < 10) thickness = 50;
+
+                        if (distToP1 > 0.01) direction.subVectors(cg, p1).normalize();
+
+                        let radius = 60;
+                        if (row['Size']) {
+                            let parsed = parseFloat(String(row['Size']).replace('"', '').split('x')[0]);
+                            if (!isNaN(parsed)) radius = (parsed * 1.3) * 12.7;
+                        }
+
+                        const pStart = new THREE.Vector3().copy(cg).sub(direction.clone().multiplyScalar(thickness / 2));
+                        const pEnd = new THREE.Vector3().copy(cg).add(direction.clone().multiplyScalar(thickness / 2));
+
+                        const geometry = new THREE.CylinderGeometry(radius, radius, thickness, 16);
+                        mesh = new THREE.Mesh(geometry, matDinamico);
+                        mesh.position.copy(cg);
+                        const axis = new THREE.Vector3(0, 1, 0);
+                        mesh.quaternion.setFromUnitVectors(axis, direction);
+
+                        geomInfo = { pStart: pStart, pEnd: pEnd, radius: radius };
+                    }
+                } else if (sheet === 'Valve') {
+                    if (!row['X Coordinate (Port 1)']) {
+                        mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                        mesh.position.copy(cg);
+                    } else {
+                        const p1x = parseFloat(row['X Coordinate (Port 1)']) || 0;
+                        const p1y = parseFloat(row['Y Coordinate (Port 1)']) || 0;
+                        const p1z = parseFloat(row['COP Elevation (Port 1)']) || 0;
+                        const p1 = new THREE.Vector3(p1x - centerOffset.x, p1y - centerOffset.y, p1z - centerOffset.z);
+
+                        const distToP1 = p1.distanceTo(cg);
+                        let direction = new THREE.Vector3(0, 1, 0);
+
+                        let thickness = distToP1 * 2;
+                        if (thickness < 20) thickness = 80;
+
+                        if (distToP1 > 0.01) direction.subVectors(cg, p1).normalize();
+
+                        let radius = 80;
+                        if (row['Size']) {
+                            let parsed = parseFloat(String(row['Size']).replace('"', '').split('x')[0]);
+                            if (!isNaN(parsed)) radius = (parsed * 2.5) * 12.7;
+                        }
+
+                        const pStart = new THREE.Vector3().copy(cg).sub(direction.clone().multiplyScalar(thickness / 2));
+                        const pEnd = new THREE.Vector3().copy(cg).add(direction.clone().multiplyScalar(thickness / 2));
+
+                        const geometry = new THREE.CylinderGeometry(radius, radius, thickness, 16);
+                        mesh = new THREE.Mesh(geometry, matDinamico);
+                        mesh.position.copy(cg);
+                        const axis = new THREE.Vector3(0, 1, 0);
+                        mesh.quaternion.setFromUnitVectors(axis, direction);
+
+                        geomInfo = { pStart: pStart, pEnd: pEnd, radius: radius };
+                    }
+                } else if (sheet === 'Reducer') {
+                    if (!row['X Coordinate (Port 1)']) {
+                        mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                        mesh.position.copy(cg);
+                    } else {
+                        const p1x = parseFloat(row['X Coordinate (Port 1)']) || 0;
+                        const p1y = parseFloat(row['Y Coordinate (Port 1)']) || 0;
+                        const p1z = parseFloat(row['COP Elevation (Port 1)']) || 0;
+                        const p1 = new THREE.Vector3(p1x - centerOffset.x, p1y - centerOffset.y, p1z - centerOffset.z);
+
+                        const distToP1 = p1.distanceTo(cg);
+                        let direction = new THREE.Vector3(0, 1, 0);
+
+                        let thickness = distToP1 * 2;
+                        if (thickness < 10) thickness = 40;
+
+                        if (distToP1 > 0.01) direction.subVectors(p1, cg).normalize();
+
+                        let radius1 = 40;
+                        let radius2 = 20;
+
+                        if (row['Size']) {
+                            const parts = String(row['Size']).replace(/"/g, '').split('x');
+                            let parsed1 = parseFloat(parts[0]);
+                            let parsed2 = parseFloat(parts[1]);
+                            if (!isNaN(parsed1)) radius1 = parsed1 * 12.7;
+                            if (!isNaN(parsed2)) radius2 = parsed2 * 12.7;
+                            else radius2 = radius1 * 0.5;
+                        }
+
+                        const pStart = new THREE.Vector3().copy(cg).sub(direction.clone().multiplyScalar(thickness / 2));
+                        const pEnd = new THREE.Vector3().copy(cg).add(direction.clone().multiplyScalar(thickness / 2));
+
+                        const geometry = new THREE.CylinderGeometry(radius1, radius2, thickness, 16);
+                        mesh = new THREE.Mesh(geometry, matDinamico);
+                        mesh.position.copy(cg);
+                        const axis = new THREE.Vector3(0, 1, 0);
+                        mesh.quaternion.setFromUnitVectors(axis, direction);
+
+                        geomInfo = { pStart: pStart, pEnd: pEnd, radius: Math.max(radius1, radius2) };
+                    }
+                } else {
+                    mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                    mesh.position.copy(cg);
+                }
+
+                mesh.userData = {
+                    pnpid: row['PnPID'],
+                    type: sheet,
+                    size: row['Size'] || "-",
+                    length: formatearDecimal(finalLength),
+                    status: row['Status'] || "-",
+                    desc: row['Long Description (Size)'] || row['Long Description (Family)'] || "-",
+                    geomData: geomInfo
+                };
+
+                originalColors.set(mesh.uuid, mesh.material.color.getHex());
+                objectsGroup.add(mesh);
+            });
+
+            // PASO 2: Procesar Conexiones Complejas con reglas de distancia y simetría
+            fittingsData.forEach(row => {
+                const cgx = parseFloat(row['Center of Gravity X']) || 0;
+                const cgy = parseFloat(row['Center of Gravity Y']) || 0;
+                const cgz = parseFloat(row['Center of Gravity Z']) || 0;
+                const cg = new THREE.Vector3(cgx - centerOffset.x, cgy - centerOffset.y, cgz - centerOffset.z);
+
+                const sheet = row['_SheetName'];
+                let finalLength = row['Cut Length'];
+
+                let colorBase = 0xFF9800;
+                if (String(row['Status'] || "").trim().toLowerCase() === 'existing') colorBase = 0xF44336;
+                const matDinamico = new THREE.MeshLambertMaterial({ color: colorBase });
+
+                const fittingSize = row['Size'] || "-";
+                const descStr = String(row['Long Description (Size)'] || "") + " " + String(row['Short Description'] || "") + " " + String(row['Long Description (Family)'] || "");
+                const is45 = descStr.includes("45");
+
+                let closestPts = [];
+                objectsGroup.children.forEach(m => {
+                    if (!isSizeCompatible(fittingSize, m.userData.size)) return;
+
+                    const g = m.userData.geomData;
+                    if (!g) return;
+
+                    closestPts.push({ point: g.pStart.clone(), dist: cg.distanceTo(g.pStart), mesh: m, radius: g.radius });
+                    if (g.pStart.distanceTo(g.pEnd) > 1.0) {
+                        closestPts.push({ point: g.pEnd.clone(), dist: cg.distanceTo(g.pEnd), mesh: m, radius: g.radius });
+                    }
+                });
+
+                closestPts.sort((a, b) => a.dist - b.dist);
+
+                let uniquePts = [];
+                for (let pt of closestPts) {
+                    if (!uniquePts.find(p => p.mesh.uuid === pt.mesh.uuid)) {
+                        uniquePts.push(pt);
+                    }
+                    if (uniquePts.length >= 4) break;
+                }
+
+                let mesh;
+                let geomInfo = { pStart: cg, pEnd: cg, radius: RADIO_ESFERA };
+
+                // === 1. CODOS ===
+                if (sheet === 'Elbow' || sheet === 'Pipe Bend') {
+                    let dibujarCurva = false;
+                    let radius = 40;
+                    let parsed = parseFloat(String(fittingSize).replace('"', '').split('x')[0]);
+                    if (!isNaN(parsed)) radius = parsed * 12.7;
+
+                    if (uniquePts.length >= 2) {
+                        const pt1 = uniquePts[0];
+                        const pt2 = uniquePts[1];
+
+                        if (is45) {
+                            // Lógica restrictiva de distancia para 45°
+                            const angulo = calcularAnguloEntreTubos(pt1.mesh, pt2.mesh);
+                            const maxPermittedDist = radius * 8.0 + 150.0; // Distancia límite escalable
+
+                            if (Math.abs(angulo - 45) < 5.0 && pt1.dist <= maxPermittedDist && pt2.dist <= maxPermittedDist) {
+                                dibujarCurva = true;
+                            }
+                        } else {
+                            // Para otros codos, basta con que estén razonablemente cerca
+                            if (pt1.dist < 2000.0 && pt2.dist < 2000.0) {
+                                dibujarCurva = true;
+                            }
+                        }
+                    }
+
+                    if (dibujarCurva) {
+                        const pt1 = uniquePts[0];
+                        const pt2 = uniquePts[1];
+                        const mid = new THREE.Vector3().addVectors(pt1.point, pt2.point).multiplyScalar(0.5);
+                        const dir = new THREE.Vector3().subVectors(cg, mid);
+                        const controlPoint = new THREE.Vector3().copy(mid).add(dir.multiplyScalar(2.0));
+
+                        const curve = new THREE.QuadraticBezierCurve3(
+                            new THREE.Vector3().subVectors(pt1.point, cg),
+                            new THREE.Vector3().subVectors(controlPoint, cg),
+                            new THREE.Vector3().subVectors(pt2.point, cg)
+                        );
+
+                        const geometry = new THREE.TubeGeometry(curve, 16, radius, 12, false);
+                        mesh = new THREE.Mesh(geometry, matDinamico);
+                        mesh.position.copy(cg);
+
+                        geomInfo = { pStart: pt1.point, pEnd: pt2.point, radius: radius };
+                    } else {
+                        mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                        mesh.position.copy(cg);
+                    }
+                }
+                // === 2. TEES Y LATERALES ===
+                else if (sheet === 'Tee' || sheet === 'Lateral' || sheet === 'Single Branch Fitting') {
+                    let dibujarForma = false;
+
+                    if (uniquePts.length >= 3 && uniquePts[2].dist < 2000.0) {
+                        // REGLA DE SIMETRÍA ESTRICTA PARA TEES
+                        const dists = uniquePts.slice(0, 3).map(p => p.dist);
+                        const maxD = Math.max(...dists);
+                        const minD = Math.min(...dists);
+
+                        if ((maxD - minD) < 50.0) { // Tolerancia simétrica < 50mm
+                            // Comprobación de que las 3 tuberías están en el mismo plano
+                            const v1 = new THREE.Vector3().subVectors(uniquePts[0].point, cg).normalize();
+                            const v2 = new THREE.Vector3().subVectors(uniquePts[1].point, cg).normalize();
+                            const v3 = new THREE.Vector3().subVectors(uniquePts[2].point, cg).normalize();
+
+                            const coplanarTest = Math.abs(v1.clone().cross(v2).dot(v3));
+                            if (coplanarTest < 0.2) {
+                                dibujarForma = true;
+                            }
+                        }
+                    }
+
+                    if (dibujarForma) {
+                        const geometries = [];
+                        uniquePts.slice(0, 3).forEach(pt => {
+                            const dist = cg.distanceTo(pt.point);
+                            const cylGeom = new THREE.CylinderGeometry(pt.radius, pt.radius, dist, 12);
+                            cylGeom.translate(0, dist / 2, 0);
+
+                            const dirCyl = new THREE.Vector3().subVectors(pt.point, cg).normalize();
+                            const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirCyl);
+                            cylGeom.applyQuaternion(quaternion);
+
+                            geometries.push(cylGeom);
+                        });
+
+                        // FALSE y clearGroups para que NO se despiece el color al seleccionarlo
+                        const mergedGeom = BufferGeometryUtils.mergeGeometries(geometries, false);
+                        mergedGeom.clearGroups();
+
+                        mesh = new THREE.Mesh(mergedGeom, matDinamico);
+                        mesh.position.copy(cg);
+
+                        geomInfo = { pStart: uniquePts[0].point, pEnd: uniquePts[1].point, radius: uniquePts[0].radius };
+                    } else {
+                        mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                        mesh.position.copy(cg);
+                    }
+                }
+                // === 3. CRUCES ===
+                else if (sheet === 'Cross') {
+                    let dibujarForma = false;
+
+                    if (uniquePts.length >= 4 && uniquePts[3].dist < 2000.0) {
+                        // REGLA DE SIMETRÍA ESTRICTA PARA CRUCES
+                        const dists = uniquePts.slice(0, 4).map(p => p.dist);
+                        const maxD = Math.max(...dists);
+                        const minD = Math.min(...dists);
+
+                        if ((maxD - minD) < 50.0) {
+                            dibujarForma = true;
+                        }
+                    }
+
+                    if (dibujarForma) {
+                        const geometries = [];
+                        uniquePts.slice(0, 4).forEach(pt => {
+                            const dist = cg.distanceTo(pt.point);
+                            const cylGeom = new THREE.CylinderGeometry(pt.radius, pt.radius, dist, 12);
+                            cylGeom.translate(0, dist / 2, 0);
+
+                            const dirCyl = new THREE.Vector3().subVectors(pt.point, cg).normalize();
+                            const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirCyl);
+                            cylGeom.applyQuaternion(quaternion);
+
+                            geometries.push(cylGeom);
+                        });
+
+                        // FALSE y clearGroups para que NO se despiece el color al seleccionarlo
+                        const mergedGeom = BufferGeometryUtils.mergeGeometries(geometries, false);
+                        mergedGeom.clearGroups();
+
+                        mesh = new THREE.Mesh(mergedGeom, matDinamico);
+                        mesh.position.copy(cg);
+
+                        geomInfo = { pStart: uniquePts[0].point, pEnd: uniquePts[1].point, radius: uniquePts[0].radius };
+                    } else {
+                        mesh = new THREE.Mesh(fittingGeometry, matDinamico);
+                        mesh.position.copy(cg);
+                    }
+                }
+
+                mesh.userData = {
+                    pnpid: row['PnPID'],
+                    type: sheet,
+                    size: fittingSize,
+                    length: formatearDecimal(finalLength),
+                    status: row['Status'] || "-",
+                    desc: row['Long Description (Size)'] || row['Long Description (Family)'] || "-",
+                    geomData: geomInfo
+                };
+
+                originalColors.set(mesh.uuid, mesh.material.color.getHex());
+                objectsGroup.add(mesh);
+            });
+        }
+
+        function onMouseClick(event) {
+            // Ignorar el click derecho (para que lo maneje el context menu)
+            if (event.button === 2) return;
+
+            // ¡LA SOLUCIÓN! Si el click es DENTRO del menú contextual, cancelamos esto y dejamos que el botón funcione
+            if (event.target.closest('#context-menu')) return;
+
+            // Cerrar menú contextual si se hace click izquierdo en cualquier OTRA parte
+            document.getElementById('context-menu').style.display = 'none';
+
+            if (event.target.closest('#ui-container') || event.target.closest('#toast') || event.target.closest('#top-right-panel')) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(objectsGroup.children);
+
+            if (intersects.length > 0) {
+                procesarSeleccion(intersects[0].object, true);
+            } else {
+                if (modoRutaActivo && intersectedObject) return;
+
+                if (intersectedObject) {
+                    intersectedObject.material.color.setHex(originalColors.get(intersectedObject.uuid));
+                    intersectedObject = null;
+                }
+                limpiarCercanos();
+                document.getElementById('info-panel').style.display = 'none';
+            }
+        }
+
+        let objectToConvert = null;
+        const contextMenu = document.getElementById('context-menu');
+        const btnConvertPoint = document.getElementById('btn-convert-point');
+
+        // Escuchar Click Derecho (Context Menu)
+        window.addEventListener('contextmenu', (event) => {
+            event.preventDefault(); // Evita el menú nativo del navegador
+
+            if (event.target.closest('#ui-container') || event.target.closest('#top-right-panel')) {
+                contextMenu.style.display = 'none';
+                return;
+            }
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(objectsGroup.children);
+
+            if (intersects.length > 0) {
+                objectToConvert = intersects[0].object;
+
+                // Mostrar menú en la posición del ratón
+                contextMenu.style.left = event.clientX + 'px';
+                contextMenu.style.top = event.clientY + 'px';
+                contextMenu.style.display = 'block';
+            } else {
+                contextMenu.style.display = 'none';
+                objectToConvert = null;
+            }
+        });
+
+        // Lógica para convertir a punto
+        btnConvertPoint.addEventListener('click', () => {
+            if (!objectToConvert) return;
+
+            // 1. Crear nueva geometría básica (Esfera)
+            const RADIO_ESFERA = 40;
+            const geomEsfera = new THREE.SphereGeometry(RADIO_ESFERA, 16, 16);
+
+            // Mantener el color base leyendo del originalColors o del material actual
+            const colorOriginalHex = originalColors.get(objectToConvert.uuid);
+            const nuevoMaterial = new THREE.MeshLambertMaterial({ color: colorOriginalHex });
+
+            const nuevoMesh = new THREE.Mesh(geomEsfera, nuevoMaterial);
+
+            // 2. Conservar la posición (Centro de Gravedad) y los datos de Excel
+            nuevoMesh.position.copy(objectToConvert.position);
+            nuevoMesh.userData = objectToConvert.userData;
+
+            // Actualizar la geometría en userData por si se requiere para distancias futuras
+            nuevoMesh.userData.geomData = {
+                pStart: objectToConvert.position.clone(),
+                pEnd: objectToConvert.position.clone(),
+                radius: RADIO_ESFERA
+            };
+
+            // 3. Gestionar los UUIDs y colores
+            originalColors.delete(objectToConvert.uuid);
+            originalColors.set(nuevoMesh.uuid, colorOriginalHex);
+
+            // 4. Reemplazar en la escena
+            objectsGroup.remove(objectToConvert);
+            objectsGroup.add(nuevoMesh);
+
+            // Liberar memoria de la geometría vieja
+            if (objectToConvert.geometry) objectToConvert.geometry.dispose();
+
+            // 5. Limpiar selección si el objeto transformado estaba seleccionado
+            if (intersectedObject && intersectedObject.uuid === objectToConvert.uuid) {
+                intersectedObject = null;
+                limpiarCercanos();
+                document.getElementById('info-panel').style.display = 'none';
+            }
+
+            // 6. Cerrar menú contextual
+            contextMenu.style.display = 'none';
+            objectToConvert = null;
+        });
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function actualizarMovimientoWASD() {
+            const dt = clock.getDelta();
+
+            if (!moveState.forward && !moveState.backward && !moveState.left && !moveState.right && !moveState.up && !moveState.down) return;
+
+            const forward = new THREE.Vector3();
+            camera.getWorldDirection(forward);
+            forward.z = 0;
+
+            if (forward.lengthSq() === 0 && (moveState.forward || moveState.backward || moveState.left || moveState.right)) return;
+            forward.normalize();
+
+            const right = new THREE.Vector3();
+            right.crossVectors(forward, new THREE.Vector3(0, 0, 1)).normalize();
+
+            const deltaXY = new THREE.Vector3();
+            if (moveState.forward) deltaXY.add(forward);
+            if (moveState.backward) deltaXY.sub(forward);
+            if (moveState.left) deltaXY.sub(right);
+            if (moveState.right) deltaXY.add(right);
+
+            if (deltaXY.lengthSq() > 0) {
+                deltaXY.normalize().multiplyScalar(moveSpeed * dt);
+            }
+
+            const deltaZ = new THREE.Vector3();
+            if (moveState.up) deltaZ.z += moveSpeedZ * dt;
+            if (moveState.down) deltaZ.z -= moveSpeedZ * dt;
+
+            const totalDelta = new THREE.Vector3().addVectors(deltaXY, deltaZ);
+
+            if (totalDelta.lengthSq() > 0) {
+                camera.position.add(totalDelta);
+                controls.target.add(totalDelta);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            actualizarMovimientoWASD();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+
+</html>
