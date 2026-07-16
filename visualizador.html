@@ -385,7 +385,7 @@
             border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             padding: 5px 0;
-            min-width: 150px;
+            min-width: 180px;
         }
 
         .context-menu-item {
@@ -436,7 +436,8 @@
         </div>
 
         <div class="legend">
-            <div class="legend-item"><span class="color-box" style="background:#90A4AE;"></span> Tuberías y Flanges
+            <div class="legend-item"><span class="color-box" style="background:#90A4AE;"></span> Tuberías, Niples y
+                Flanges
             </div>
             <div class="legend-item"><span class="color-box" style="background:#FF9800;"></span> Válvulas y Accesorios
             </div>
@@ -531,6 +532,8 @@
 
     <div id="context-menu">
         <div class="context-menu-item" id="btn-convert-point">Transformar a Punto (CG)</div>
+        <div class="context-menu-item" id="btn-toggle-esparrago" style="display: none;">Incluir Espárrago</div>
+        <div class="context-menu-item" id="btn-toggle-perno" style="display: none;">Incluir Perno</div>
     </div>
 
     <script type="module">
@@ -557,7 +560,39 @@
         const COLOR_SELECCION = 0xFFEB3B;
         const COLOR_CERCANO = 0x4CAF50;
 
-        const hojasObjetivo = ['Pipe', 'Valve', 'Tee', 'Lateral', 'Reducer', 'Flange', 'Pipe Bend', 'Elbow', 'Cross', 'Coupling', 'Blind Flange', 'Single Branch Fitting'];
+        // Se agregó "Nipple" a las hojas objetivo
+        const hojasObjetivo = ['Pipe', 'Nipple', 'Valve', 'Tee', 'Lateral', 'Reducer', 'Flange', 'Pipe Bend', 'Elbow', 'Cross', 'Coupling', 'Blind Flange', 'Single Branch Fitting'];
+
+        // Datos JSON Clase 150 ASME B16.5-2017
+        const flangeBoltData = {
+            "1/2": { bolts: 4, diam: "1/2" },
+            "3/4": { bolts: 4, diam: "1/2" },
+            "1": { bolts: 4, diam: "1/2" },
+            "1 1/4": { bolts: 4, diam: "1/2" },
+            "1 1/2": { bolts: 4, diam: "1/2" },
+            "2": { bolts: 4, diam: "5/8" },
+            "2 1/2": { bolts: 4, diam: "5/8" },
+            "3": { bolts: 4, diam: "5/8" },
+            "3 1/2": { bolts: 8, diam: "5/8" },
+            "4": { bolts: 8, diam: "5/8" },
+            "5": { bolts: 8, diam: "3/4" },
+            "6": { bolts: 8, diam: "3/4" },
+            "8": { bolts: 8, diam: "3/4" },
+            "10": { bolts: 12, diam: "7/8" },
+            "12": { bolts: 12, diam: "7/8" },
+            "14": { bolts: 12, diam: "1" },
+            "16": { bolts: 16, diam: "1" },
+            "18": { bolts: 16, diam: "1 1/8" },
+            "20": { bolts: 20, diam: "1 1/8" },
+            "22": { bolts: 20, diam: "1 1/4" },
+            "24": { bolts: 20, diam: "1 1/4" }
+        };
+
+        function getFlangeBoltInfo(sizeStr) {
+            if (!sizeStr) return null;
+            let cleanSize = String(sizeStr).replace(/"/g, '').split('x')[0].trim();
+            return flangeBoltData[cleanSize] || null;
+        }
 
         window.copiarTexto = function (elementId) {
             const texto = document.getElementById(elementId).innerText;
@@ -581,11 +616,21 @@
                 return;
             }
 
-            const datosParaExcel = rutaArray.map(item => {
+            // --- Novedad: Preguntar nombre de archivo ---
+            let fileName = prompt("Ingrese el nombre del archivo Excel a exportar:", "Ruta_Plant3D");
+            if (!fileName) return; // Si el usuario cancela, no hacemos nada
+            if (!fileName.toLowerCase().endsWith('.xlsx')) {
+                fileName += '.xlsx';
+            }
+
+            const datosParaExcel = [];
+
+            rutaArray.forEach(item => {
                 let cantidad = 1;
                 let unidad = '[un]';
 
-                if (item.type === 'Pipe') {
+                // Tuberías y Niples se miden en metros
+                if (item.type === 'Pipe' || item.type === 'Nipple') {
                     let num = parseFloat(String(item.length).replace(',', '.'));
                     if (!isNaN(num)) {
                         cantidad = num / 1000;
@@ -593,18 +638,55 @@
                     unidad = '[m]';
                 }
 
-                return {
+                // Push el elemento original a la lista
+                datosParaExcel.push({
                     "Descripción": item.desc,
                     "Diámetro": item.size,
                     "Cantidad": cantidad,
                     "Unidad": unidad
-                };
+                });
+
+                // Lógica de extras para Flanges con JSON
+                if (item.type.toLowerCase().includes('flange')) {
+                    // 1. Siempre incluir la Empaquetadura
+                    datosParaExcel.push({
+                        "Descripción": "EMPAQUETADURA",
+                        "Diámetro": item.size,
+                        "Cantidad": 1,
+                        "Unidad": "[un]"
+                    });
+
+                    // 2. Revisar si hay esparragos o pernos activados en este mesh
+                    const mesh = objectsGroup.children.find(m => m.uuid === item.uuid);
+                    if (mesh) {
+                        let boltInfo = getFlangeBoltInfo(item.size);
+                        let boltQty = boltInfo ? boltInfo.bolts : 1;
+                        let boltDiam = boltInfo ? boltInfo.diam + '"' : item.size;
+
+                        if (mesh.userData.incluirEsparrago) {
+                            datosParaExcel.push({
+                                "Descripción": "ESPARRAGO",
+                                "Diámetro": boltDiam,
+                                "Cantidad": boltQty,
+                                "Unidad": "[un]"
+                            });
+                        }
+                        if (mesh.userData.incluirPerno) {
+                            datosParaExcel.push({
+                                "Descripción": "PERNO",
+                                "Diámetro": boltDiam,
+                                "Cantidad": boltQty,
+                                "Unidad": "[un]"
+                            });
+                        }
+                    }
+                }
             });
 
             const worksheet = XLSX.utils.json_to_sheet(datosParaExcel);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Ruta Extraida");
-            XLSX.writeFile(workbook, "Ruta_Plant3D.xlsx");
+            XLSX.writeFile(workbook, fileName);
         };
 
         function isSizeCompatible(sizeA, sizeB) {
@@ -1064,14 +1146,15 @@
                 let finalLength = row['Cut Length'];
 
                 let colorBase = 0x90A4AE;
-                if (sheet !== 'Pipe' && !sheet.toLowerCase().includes('flange') && sheet !== 'Coupling') colorBase = 0xFF9800;
+                // Pipe y Nipple quedan con color gris, el resto que no es flange va naranjo
+                if (sheet !== 'Pipe' && sheet !== 'Nipple' && !sheet.toLowerCase().includes('flange') && sheet !== 'Coupling') colorBase = 0xFF9800;
                 if (String(row['Status'] || "").trim().toLowerCase() === 'existing') colorBase = 0xF44336;
 
                 const matDinamico = new THREE.MeshLambertMaterial({ color: colorBase });
                 let mesh;
                 let geomInfo = { pStart: cg, pEnd: cg, radius: RADIO_ESFERA };
 
-                if (sheet === 'Pipe') {
+                if (sheet === 'Pipe' || sheet === 'Nipple') {
                     if (!row['X Coordinate (Port 1)']) return;
                     const p1x = parseFloat(row['X Coordinate (Port 1)']) || 0;
                     const p1y = parseFloat(row['Y Coordinate (Port 1)']) || 0;
@@ -1259,7 +1342,10 @@
                     length: formatearDecimal(finalLength),
                     status: row['Status'] || "-",
                     desc: row['Long Description (Size)'] || row['Long Description (Family)'] || "-",
-                    geomData: geomInfo
+                    geomData: geomInfo,
+                    // Propiedades nuevas para las opciones del Menu Contextual
+                    incluirEsparrago: false,
+                    incluirPerno: false
                 };
 
                 originalColors.set(mesh.uuid, mesh.material.color.getHex());
@@ -1460,7 +1546,9 @@
                     length: formatearDecimal(finalLength),
                     status: row['Status'] || "-",
                     desc: row['Long Description (Size)'] || row['Long Description (Family)'] || "-",
-                    geomData: geomInfo
+                    geomData: geomInfo,
+                    incluirEsparrago: false,
+                    incluirPerno: false
                 };
 
                 originalColors.set(mesh.uuid, mesh.material.color.getHex());
@@ -1472,7 +1560,7 @@
             // Ignorar el click derecho (para que lo maneje el context menu)
             if (event.button === 2) return;
 
-            // ¡LA SOLUCIÓN! Si el click es DENTRO del menú contextual, cancelamos esto y dejamos que el botón funcione
+            // Si el click es DENTRO del menú contextual, cancelamos esto y dejamos que el botón funcione
             if (event.target.closest('#context-menu')) return;
 
             // Cerrar menú contextual si se hace click izquierdo en cualquier OTRA parte
@@ -1503,6 +1591,8 @@
         let objectToConvert = null;
         const contextMenu = document.getElementById('context-menu');
         const btnConvertPoint = document.getElementById('btn-convert-point');
+        const btnToggleEsparrago = document.getElementById('btn-toggle-esparrago');
+        const btnTogglePerno = document.getElementById('btn-toggle-perno');
 
         // Escuchar Click Derecho (Context Menu)
         window.addEventListener('contextmenu', (event) => {
@@ -1526,6 +1616,19 @@
                 contextMenu.style.left = event.clientX + 'px';
                 contextMenu.style.top = event.clientY + 'px';
                 contextMenu.style.display = 'block';
+
+                // Mostrar/Ocultar opciones específicas de Flange
+                if (objectToConvert.userData.type.toLowerCase().includes('flange')) {
+                    btnToggleEsparrago.style.display = 'block';
+                    btnTogglePerno.style.display = 'block';
+
+                    btnToggleEsparrago.innerHTML = objectToConvert.userData.incluirEsparrago ? '✔ Incluir Espárrago' : 'Incluir Espárrago';
+                    btnTogglePerno.innerHTML = objectToConvert.userData.incluirPerno ? '✔ Incluir Perno' : 'Incluir Perno';
+                } else {
+                    btnToggleEsparrago.style.display = 'none';
+                    btnTogglePerno.style.display = 'none';
+                }
+
             } else {
                 contextMenu.style.display = 'none';
                 objectToConvert = null;
@@ -1576,6 +1679,22 @@
             }
 
             // 6. Cerrar menú contextual
+            contextMenu.style.display = 'none';
+            objectToConvert = null;
+        });
+
+        // Lógica para Espárragos
+        btnToggleEsparrago.addEventListener('click', () => {
+            if (!objectToConvert) return;
+            objectToConvert.userData.incluirEsparrago = !objectToConvert.userData.incluirEsparrago;
+            contextMenu.style.display = 'none';
+            objectToConvert = null;
+        });
+
+        // Lógica para Pernos
+        btnTogglePerno.addEventListener('click', () => {
+            if (!objectToConvert) return;
+            objectToConvert.userData.incluirPerno = !objectToConvert.userData.incluirPerno;
             contextMenu.style.display = 'none';
             objectToConvert = null;
         });
